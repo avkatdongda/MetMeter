@@ -209,32 +209,41 @@ uint16_t GetCcdMinData(uint16_t i_start, uint16_t i_end)
 	return i_min+i_start;
 }
 
-//基于最小点左右各两个点进行拟合，返回更精确的最小点坐标
+//基于最小点左右各三个点进行拟合，返回更精确的最小点坐标
 static float GetCcdMinDataFine(uint16_t i_start, uint16_t i_end)
 {
 	uint16_t i_min;
-	float y0, y1, y2, y3, y4;
-	float num, den;
+	float y0, y1, y2, y3, y4, y5, y6;
+	float sum_y, sum_xy, sum_x2y;
+	float a, b;
 	float dx;
 
 	if(i_end > TCD1103_DATA_LEN16) i_end = TCD1103_DATA_LEN16;
 	i_min = GetCcdMinData(i_start, i_end);
-	if(i_min < 2 || (i_min + 2) >= TCD1103_DATA_LEN16) return (float)i_min;
-	if(i_min < i_start + 2 || i_min + 2 > i_end) return (float)i_min;
+	if(i_min < 3 || (i_min + 3) >= TCD1103_DATA_LEN16) return (float)i_min;
+	if(i_min < i_start + 3 || i_min + 3 > i_end) return (float)i_min;
 
-	y0 = (float)CcdSumData[i_min - 2];
-	y1 = (float)CcdSumData[i_min - 1];
-	y2 = (float)CcdSumData[i_min];
-	y3 = (float)CcdSumData[i_min + 1];
-	y4 = (float)CcdSumData[i_min + 2];
+	y0 = (float)CcdSumData[i_min - 3];
+	y1 = (float)CcdSumData[i_min - 2];
+	y2 = (float)CcdSumData[i_min - 1];
+	y3 = (float)CcdSumData[i_min];
+	y4 = (float)CcdSumData[i_min + 1];
+	y5 = (float)CcdSumData[i_min + 2];
+	y6 = (float)CcdSumData[i_min + 3];
 
-	num = 2.0f * (y4 - y0) + (y3 - y1);
-	den = 2.0f * (y4 + y0) - (y3 + y1) - 2.0f * y2;
-	if(den > -1e-6f && den < 1e-6f) return (float)i_min;
+	sum_y = y0 + y1 + y2 + y3 + y4 + y5 + y6;
+	sum_xy = (-3.0f * y0) + (-2.0f * y1) + (-1.0f * y2)
+		+ (1.0f * y4) + (2.0f * y5) + (3.0f * y6);
+	sum_x2y = (9.0f * y0) + (4.0f * y1) + (1.0f * y2)
+		+ (1.0f * y4) + (4.0f * y5) + (9.0f * y6);
 
-	dx = -0.7f * (num / den);
-	if(dx > 2.0f) dx = 2.0f;
-	if(dx < -2.0f) dx = -2.0f;
+	b = sum_xy / 28.0f;
+	a = (sum_x2y - 4.0f * sum_y) / 84.0f;
+	if(a > -1e-6f && a < 1e-6f) return (float)i_min;
+
+	dx = -b / (2.0f * a);
+	if(dx > 3.0f) dx = 3.0f;
+	if(dx < -3.0f) dx = -3.0f;
 
 	return (float)i_min + dx;
 }
